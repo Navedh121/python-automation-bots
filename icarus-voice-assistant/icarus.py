@@ -21,7 +21,7 @@ app = Flask(__name__)
 SAMPLE_RATE = 44100
 conversation_history = []
 
-VOICE = "en-GB-RyanNeural"
+VOICE = "en-US-AndrewNeural"
 
 SYSTEM_PROMPT = """
 You are Icarus, a brilliant AI assistant inspired by Jarvis from Iron Man.
