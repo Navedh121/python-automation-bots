@@ -1,0 +1,13 @@
+requests
+python-dotenv
+schedule
+beautifulsoup4
+lxml
+flask
+groq
+edge-tts
+SpeechRecognition
+sounddevice
+scipy
+numpy
+playsound
