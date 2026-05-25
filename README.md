@@ -1,52 +1,131 @@
-# Phase 3 — Automation and AI Agents
+# Autonomous Python Agents
 
-Second year Electronics Engineering student from Kerala, India. This repo has three projects I built while learning Python automation. Each project came from a real need, not just a tutorial exercise.
+Three background agents I built from real personal needs. Each one runs on its own, talks to external APIs, and takes action without any manual input after setup.
+
+Built by Navedh — second-year Electronics Engineering student from Kerala, India.
 
 ---
 
 ## Projects
 
-### Telegram News Bot
+### 1. Icarus — Voice Assistant
 
-I was spending too much time jumping between apps to read the news. Built a bot that pulls top stories every morning and sends them to my Telegram automatically, sorted into four sections: world news, tech, sports, and AI. Set it and forget it.
+A voice assistant that runs in the browser. You press start, speak, press stop, and it responds out loud in a British neural voice. It remembers the conversation across turns.
 
-Stack: Python, NewsAPI, Telegram Bot API, schedule library
+**How it works:**
+
+```
+[Browser UI] → POST /start → Flask opens mic → sounddevice records audio chunks
+     ↓
+POST /stop → numpy concatenates chunks → WAV file saved to temp
+     ↓
+Google Speech Recognition → transcribed text
+     ↓
+Groq API (LLaMA 3.3 70b) + conversation_history → AI reply
+     ↓
+edge-tts → MP3 generated → playsound plays it → temp file deleted
+     ↓
+JSON response sent back → Browser UI updates with text
+```
+
+The server uses Python threading so audio playback doesn't block the HTTP response. Conversation history is kept in memory for the session, giving it context across multiple turns.
+
+**Stack:** Python, Flask, Groq API (LLaMA 3.3), Google Speech Recognition, Microsoft Edge TTS, sounddevice, NumPy, HTML/CSS/JS
 
 ---
 
-### Amazon Price Tracker
+### 2. Telegram News Bot
 
-Wanted to buy a perfume but the price kept changing. Instead of checking manually every day, I wrote a script that monitors the price every few hours and sends me a Telegram alert when it falls below a number I set. It also saves a history of every price it has checked.
+Fetches top stories from four categories every morning and sends them to my Telegram automatically, formatted in clean Markdown. No apps to open, no manual checking.
 
-Stack: Python, BeautifulSoup, ScraperAPI, Telegram Bot API
+**How it works:**
+
+```
+schedule library → triggers send_news() daily at 08:00
+     ↓
+4 parallel fetch functions → NewsAPI /top-headlines (general, tech, sports)
+                           → NewsAPI /everything (query: "AI OR LLM OR ChatGPT")
+     ↓
+format_news_message() → builds a Markdown digest with headlines + source + read-more links
+     ↓
+Telegram Bot API /sendMessage → delivered to chat
+     ↓
+while True loop (60s sleep) → keeps scheduler alive
+```
+
+**Stack:** Python, NewsAPI, Telegram Bot API, schedule, requests, python-dotenv
 
 ---
 
-### Icarus Voice Assistant
+### 3. Amazon Price Tracker
 
-My favourite one. A voice assistant that runs in the browser with a full UI. You press start, say something, press stop, and it responds out loud in a British neural voice. There is an animated orb and wave visualizer that reacts when speaking. Named it Icarus.
+Monitors a product page every 6 hours. Saves every price it sees to a JSON history file. Sends a Telegram alert the moment the price drops below my target — with the exact drop amount and a buy link.
 
-The backend is a Flask server. Speech recognition is handled by Google, the AI brain runs on Groq (LLaMA 3.3), and the voice is generated using Microsoft Edge TTS.
+**How it works:**
 
-Stack: Python, Flask, Groq API, Edge TTS, Google Speech Recognition, HTML, CSS, JavaScript
+```
+schedule library → triggers check_price() every 6 hours
+     ↓
+ScraperAPI → proxies the Amazon request (bypasses bot detection)
+     ↓
+BeautifulSoup → parses HTML → finds price element (a-price-whole)
+     ↓
+price_history.json → appends {price, timestamp} entry
+     ↓
+if current_price ≤ TARGET_PRICE:
+    send_alert() → Telegram: price, drop amount, buy link
+else:
+    send_status_update() → Telegram: current vs target, highest/lowest seen, checks done
+```
+
+**Stack:** Python, BeautifulSoup, ScraperAPI, Telegram Bot API, schedule, requests, python-dotenv
 
 ---
 
 ## Setup
 
-Each project sits in its own folder. You will need a `.env` file with your own API keys to run any of them. The keys are not included here.
+Each project lives in its own folder and needs its own set of API keys.
 
-Install dependencies for whichever project you want to run:
+**1. Clone the repo**
+```bash
+git clone https://github.com/Navedh121/python-automation-bots.git
+cd python-automation-bots
+```
 
+**2. Create a `.env` file** in whichever project folder you want to run (copy from `.env.example`):
+```
+TELEGRAM_TOKEN=your-telegram-bot-token
+CHAT_ID=your-telegram-chat-id
+NEWS_API_KEY=your-newsapi-key          # for telegram-news-bot
+SCRAPER_API_KEY=your-scraperapi-key    # for amazon-price-tracker
+GROQ_API_KEY=your-groq-api-key         # for icarus-voice-assistant
+```
+
+**3. Install dependencies**
 ```bash
 pip install -r requirements.txt
-python news_bot.py
+```
+
+**4. Run the project you want**
+```bash
+# Telegram News Bot
+python telegram-news-bot/news_bot.py
+
+# Amazon Price Tracker (edit PRODUCT_URL and TARGET_PRICE in the script first)
+python amazon-price-tracker/price_tracker.py
+
+# Icarus Voice Assistant (browser opens automatically)
+python icarus-voice-assistant/icarus.py
 ```
 
 ---
 
-## Notes
+## Notes on Bugs I Hit
 
-There were bugs. PyAudio would not install on Python 3.14, a Groq model got decommissioned mid-build, Amazon blocked the scraper. Got through all of it. The projects work.
+These weren't tutorial projects, so they came with real problems:
 
-Open to feedback or questions.
+- **PyAudio vs Python 3.14** — PyAudio has no wheel for Python 3.14 on Windows. Switched to `sounddevice` + `scipy` for audio I/O instead.
+- **Groq model deprecation** — The model I originally used got decommissioned mid-build. Had to update to `llama-3.3-70b-versatile` and adjust the API call.
+- **Amazon blocking the scraper** — Direct requests to Amazon get blocked instantly. Routed everything through ScraperAPI to handle the bot detection.
+
+Getting through these made the projects actually work. Open to feedback or questions.
